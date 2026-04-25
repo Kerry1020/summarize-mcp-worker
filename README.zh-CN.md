@@ -1,89 +1,36 @@
 # summarize-mcp-worker
 
-一个用于网页抓取、正文清洗抽取、元数据提取、轻量摘要的 Cloudflare Worker MCP 服务。
+基于 Cloudflare Worker 的 MCP 服务器，提供网页内容提取和轻量级抽取式摘要——无需外部模型依赖。
 
-## 功能
+## MCP 工具
 
-- `fetch_url`：抓取 URL，返回响应信息与清洗后的预览文本
-- `extract_clean`：提取网页可读正文、标题层级、段落内容
-- `summarize`：对 URL 或原始文本做轻量抽取式摘要，不依赖外部大模型
-- `extract_metadata`：提取标题、描述、canonical、作者线索、语言、封面图、发布时间等
-- MCP JSON-RPC 接口位于 `/mcp`
-- 纯 Worker 实现，无额外运行时依赖
-
-## 项目结构
-
-```text
-summarize-mcp-worker/
-├── package.json
-├── wrangler.toml
-├── README.md
-├── README.zh-CN.md
-└── src/
-    └── index.js
-```
+| 工具 | 说明 |
+|------|------|
+| `fetch_url` | 获取 URL 并返回原始响应元数据和文本预览。 |
+| `extract_clean` | 提取网页正文、标题、段落，去除广告和导航。 |
+| `summarize` | 从 URL 或文本生成抽取式摘要（基于关键词频率选句），无需 LLM。 |
+| `extract_metadata` | 提取页面元数据：标题、描述、作者、语言、发布时间等。 |
+| `health` | 健康检查。 |
 
 ## 本地开发
 
 ```bash
-cd summarize-mcp-worker
 npm install
-npm run dev
-```
-
-健康检查：
-
-```bash
-curl http://127.0.0.1:8787/
+npx wrangler dev --local --port 8792
 ```
 
 ## 部署
 
 ```bash
-npm run deploy
+npx wrangler deploy
 ```
 
-该项目可以直接作为标准 Cloudflare Worker 部署。当前 `wrangler.toml` **没有** 绑定自定义 route，因此默认会部署到 Worker / workers.dev。若你要挂自己的域名，再补充 route 配置即可。
+## 项目结构
 
-## MCP 用法
-
-接口：
-
-```text
-POST /mcp
 ```
-
-### 初始化
-
-```json
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}
+summarize-mcp-worker/
+├── src/index.js
+├── wrangler.toml
+├── package.json
+└── README.md
 ```
-
-### 列出工具
-
-```json
-{"jsonrpc":"2.0","id":2,"method":"tools/list"}
-```
-
-### 示例：摘要调用
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "summarize",
-    "arguments": {
-      "url": "https://example.com",
-      "sentence_count": 4
-    }
-  }
-}
-```
-
-## 说明
-
-- 抽取逻辑是启发式的，适合大多数文章、博客、新闻页。
-- `summarize` 是轻量抽取式摘要，不是生成式模型总结。
-- 对强依赖前端渲染的页面，如果 HTML 本身没有正文，抽取效果会有限。
